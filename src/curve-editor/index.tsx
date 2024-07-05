@@ -93,6 +93,10 @@ export const CurveEditor: React.FC = () => {
                     })
                 }}
                 onPointerMove={(event) => {
+                    if (dragging) {
+                        return;
+                    }
+
                     event.stopPropagation();
                     setHoverPoint(undefined);
 
@@ -167,8 +171,28 @@ export const CurveEditor: React.FC = () => {
                             <meshBasicMaterial color={0x2da12d} />
                         </mesh>}
 
+                    {dragging &&
+                        <mesh position={[...dragging.position, 0]}>
+                            <sphereGeometry args={[0.025, 12, 12]} />
+                            <meshBasicMaterial color={0x2da12d} />
+                        </mesh>}
+
                     <mesh
-                        position={[0.5, 0.5, -10]}>
+                        position={[0.5, 0.5, -10]}
+                        onPointerMove={({ point }) => {
+                            if (!dragging) {
+                                return;
+                            }
+                            setDragging(prev => {
+                                if (!prev) {
+                                    return undefined
+                                }
+                                return {
+                                    ...prev,
+                                    position: [point.x, point.y]
+                                }
+                            })
+                        }}>
                         <planeGeometry args={[1, 1]} />
                         <meshBasicMaterial
                             color={"#ff00ff"}
