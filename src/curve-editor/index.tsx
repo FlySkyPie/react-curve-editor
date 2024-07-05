@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState, } from 'react'
 import { Canvas, } from '@react-three/fiber'
-import { OrthographicCamera, Line, CameraControls } from '@react-three/drei'
-import useResizeObserver from "use-resize-observer";
+import { OrthographicCamera, Line, } from '@react-three/drei'
+
+import { Container } from './container';
 
 const PADDING = 0.025;
 
@@ -12,9 +13,6 @@ type IDraggingSession = {
 };
 
 export const CurveEditor: React.FC = () => {
-    const { ref, width = 1, height = 1 } = useResizeObserver<HTMLDivElement>();
-    const size = useMemo(() => Math.min(width, height), [height, width]);
-
     /**
      * Point that hovered on line.
      */
@@ -83,6 +81,7 @@ export const CurveEditor: React.FC = () => {
         })
         .map((position, index) =>
             <mesh
+                key={index}
                 position={position}
                 onPointerDown={() => {
                     setHoverPoint(undefined);
@@ -116,7 +115,6 @@ export const CurveEditor: React.FC = () => {
             dashed={false}
         />, [positionsVec3]);
 
-
     const lineInteractiveView = useMemo(() =>
         !dragging &&
         <Line
@@ -138,84 +136,70 @@ export const CurveEditor: React.FC = () => {
         />, [dragging, onAddPoint, positionsVec3]);
 
     return (
-        <div
-            ref={ref}
-            style={{
-                width: "100%",
-                height: "100%",
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-            }}>
-            <div
-                style={{
-                    width: `${size}px`,
-                    height: `${size}px`,
-                }}>
-                <Canvas style={{
-                    cursor,
-                }}
-                    onPointerUp={() => setDragging(undefined)}>
-                    <color attach="background" args={["#16161D"]} />
+        <Container>
+            <Canvas style={{
+                cursor,
+            }}
+                onPointerUp={() => setDragging(undefined)}>
+                <color attach="background" args={["#16161D"]} />
 
-                    <ambientLight intensity={Math.PI / 2} />
-                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
-                    <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
+                <ambientLight intensity={Math.PI / 2} />
+                <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
+                <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
 
-                    {pointView}
-                    {lineView}
-                    {lineInteractiveView}
-                    {hoverPoint &&
-                        <mesh position={hoverPoint}>
-                            <sphereGeometry args={[0.025, 12, 12]} />
-                            <meshBasicMaterial color={0x2da12d} />
-                        </mesh>}
+                {pointView}
+                {lineView}
+                {lineInteractiveView}
+                {hoverPoint &&
+                    <mesh position={hoverPoint}>
+                        <sphereGeometry args={[0.025, 12, 12]} />
+                        <meshBasicMaterial color={0x2da12d} />
+                    </mesh>}
 
-                    {dragging &&
-                        <mesh position={[...dragging.position, 0]}>
-                            <sphereGeometry args={[0.025, 12, 12]} />
-                            <meshBasicMaterial color={0x2da12d} />
-                        </mesh>}
+                {dragging &&
+                    <mesh position={[...dragging.position, 0]}>
+                        <sphereGeometry args={[0.025, 12, 12]} />
+                        <meshBasicMaterial color={0x2da12d} />
+                    </mesh>}
 
-                    <mesh
-                        position={[0.5, 0.5, -10]}
-                        onPointerMove={({ point }) => {
-                            if (!dragging) {
-                                return;
+                <mesh
+                    position={[0.5, 0.5, -10]}
+                    onPointerMove={({ point }) => {
+                        if (!dragging) {
+                            return;
+                        }
+                        setDragging(prev => {
+                            if (!prev) {
+                                return undefined
                             }
-                            setDragging(prev => {
-                                if (!prev) {
-                                    return undefined
-                                }
-                                return {
-                                    ...prev,
-                                    position: [point.x, point.y]
-                                }
-                            })
-                        }}>
-                        <planeGeometry args={[1, 1]} />
-                        <meshBasicMaterial
-                            color={"#ff00ff"}
-                            opacity={0.5}
-                            transparent
-                        />
-                    </mesh>
-
-                    <OrthographicCamera
-                        makeDefault
-                        top={1 + PADDING}
-                        bottom={0 - PADDING}
-                        left={0 - PADDING}
-                        right={1 + PADDING}
-                        zoom={1}
-                        near={1}
-                        far={2000}
-                        position={[0, 0, 200]}
+                            return {
+                                ...prev,
+                                position: [point.x, point.y]
+                            }
+                        })
+                    }}>
+                    <planeGeometry args={[1, 1]} />
+                    <meshBasicMaterial
+                        color={"#ff00ff"}
+                        opacity={0.5}
+                        transparent
                     />
+                </mesh>
 
-                    {/* <CameraControls makeDefault /> */}
-                </Canvas>
-            </div>
-        </div>
+                <OrthographicCamera
+                    makeDefault
+                    top={1 + PADDING}
+                    bottom={0 - PADDING}
+                    left={0 - PADDING}
+                    right={1 + PADDING}
+                    zoom={1}
+                    near={1}
+                    far={2000}
+                    position={[0, 0, 200]}
+                />
+
+                {/* <CameraControls makeDefault /> */}
+            </Canvas>
+        </Container>
     );
 }
