@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState, } from 'react'
 import { Canvas, } from '@react-three/fiber'
-import { CameraControls, OrthographicCamera, Line } from '@react-three/drei'
+import { OrthographicCamera, Line } from '@react-three/drei'
 import useResizeObserver from "use-resize-observer";
 
 const PADDING = 0.025;
@@ -9,13 +9,25 @@ export const CurveEditor: React.FC = () => {
     const { ref, width = 1, height = 1 } = useResizeObserver<HTMLDivElement>();
     const size = useMemo(() => Math.min(width, height), [height, width]);
 
+    /**
+     * Point that hovered on line.
+     */
     const [hoverPoint, setHoverPoint] = useState<[number, number, number]>();
+
+    /**
+     * Index that hovered on point (sphere).
+     */
+    const [hoverIndex, setHoverIndex] = useState<number>();
+
     const cursor = useMemo(() => {
         if (hoverPoint) {
             return "crosshair"
         }
+        if (hoverIndex !== undefined) {
+            return "grab";
+        }
         return undefined;
-    }, [hoverPoint]);
+    }, [hoverPoint, hoverIndex]);
 
     const [positions, setPositions] = useState<[number, number][]>(() => [[0, 0], [1, 1,]]);
     const positionsVec3 = useMemo<Array<[number, number, number]>>(() =>
@@ -54,8 +66,18 @@ export const CurveEditor: React.FC = () => {
         });
     }, [hoverPoint]);
 
-    const pointView = useMemo(() => positionsVec3.map((position) =>
-        <mesh position={position}>
+    const pointView = useMemo(() => positionsVec3.map((position, index) =>
+        <mesh
+            position={position}
+            onPointerMove={(event) => {
+                event.stopPropagation();
+                setHoverPoint(undefined);
+
+                setHoverIndex(index);
+
+            }}
+            onPointerLeave={() => setHoverIndex(undefined)}
+        >
             <sphereGeometry args={[0.025, 12, 12]} />
             <meshBasicMaterial color={0x2da12d} />
         </mesh>), [positionsVec3]);
@@ -132,8 +154,6 @@ export const CurveEditor: React.FC = () => {
                         far={2000}
                         position={[0, 0, 200]}
                     />
-
-                    <CameraControls makeDefault />
                 </Canvas>
             </div>
         </div>
