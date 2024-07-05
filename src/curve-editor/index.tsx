@@ -1,4 +1,4 @@
-import React, { useMemo, useState, } from 'react'
+import React, { useCallback, useMemo, useState, } from 'react'
 import { Canvas, } from '@react-three/fiber'
 import { CameraControls, OrthographicCamera, Line } from '@react-three/drei'
 import useResizeObserver from "use-resize-observer";
@@ -18,8 +18,41 @@ export const CurveEditor: React.FC = () => {
     }, [hoverPoint]);
 
     const [positions, setPositions] = useState<[number, number][]>(() => [[0, 0], [1, 1,]]);
-    const positionsVec3 = useMemo(() =>
-        positions.map(p => [...p, 0] as const), [positions]);
+    const positionsVec3 = useMemo<Array<[number, number, number]>>(() =>
+        positions.map(p => [...p, 0]), [positions]);
+
+    const onAddPoint = useCallback(() => {
+        if (!hoverPoint) {
+            return;
+        }
+
+        setPositions(prev => {
+            let targetIndex = -1;
+            for (let index = 0; index < prev.length - 1; index++) {
+                const current = prev[index];
+                const next = prev[index + 1];
+                if (current[1] <= hoverPoint[1] &&
+                    next[1] >= hoverPoint[1]
+                ) {
+                    targetIndex = index;
+                    break;
+                }
+
+            }
+            if (targetIndex === -1) {
+                return prev;
+            }
+
+
+            const nextArray: [number, number][] = [
+                ...prev.slice(0, targetIndex + 1),
+                [hoverPoint[0], hoverPoint[1]],
+                ...prev.slice(targetIndex + 1)
+            ];
+
+            return nextArray;
+        });
+    }, [hoverPoint]);
 
     const pointView = useMemo(() => positionsVec3.map((position) =>
         <mesh position={position}>
@@ -29,20 +62,18 @@ export const CurveEditor: React.FC = () => {
 
     const lineView = useMemo(() =>
         <Line
-            points={positionsVec3 as any}
+            points={positionsVec3}
             color="#00ff00"
             lineWidth={3}
-            segments
             dashed={false}
         />, [positionsVec3]);
 
 
     const lineInteractiveView = useMemo(() =>
         <Line
-            points={positionsVec3 as any}
+            points={positionsVec3}
             color="#ff00ff"
             lineWidth={16}
-            segments
             transparent
             opacity={0}
             dashed={false}
@@ -54,7 +85,8 @@ export const CurveEditor: React.FC = () => {
                 setHoverPoint([x, y, z])
             }}
             onPointerLeave={() => setHoverPoint(undefined)}
-        />, [positionsVec3]);
+            onClick={onAddPoint}
+        />, [onAddPoint, positionsVec3]);
 
     return (
         <div
