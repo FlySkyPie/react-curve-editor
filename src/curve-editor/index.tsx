@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, } from 'react'
 import { Canvas, } from '@react-three/fiber'
 import { OrthographicCamera, Line, } from '@react-three/drei'
 
@@ -12,7 +12,11 @@ type IDraggingSession = {
     position: [x: number, y: number];
 };
 
-export const CurveEditor: React.FC = () => {
+type IProps = {
+    onUpdated?: (value: [number, number][]) => void;
+};
+
+export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
     /**
      * Point that hovered on line.
      */
@@ -36,6 +40,26 @@ export const CurveEditor: React.FC = () => {
     }, [hoverPoint, hoverIndex]);
 
     const [positions, setPositions] = useState<[number, number][]>(() => [[0, 0], [1, 1,]]);
+
+    const onUpdatedRef = useRef(onUpdated);
+    onUpdatedRef.current = onUpdated;
+    useEffect(() => {
+        onUpdatedRef.current && onUpdatedRef.current(positions);
+    }, [positions]);
+
+    const editingPositions = useMemo(() => {
+        if (!dragging) {
+            return;
+        }
+
+        return positions.map((position, index) => {
+            if (dragging.index !== index) {
+                return position;
+            }
+
+            return dragging.position;
+        });
+    }, [dragging, positions]);
     const positionsVec3 = useMemo<Array<[number, number, number]>>(() =>
         positions.map(p => [...p, 0]), [positions]);
 
@@ -109,11 +133,11 @@ export const CurveEditor: React.FC = () => {
 
     const lineView = useMemo(() =>
         <Line
-            points={positionsVec3}
+            points={editingPositions || positionsVec3}
             color="#00ff00"
             lineWidth={3}
             dashed={false}
-        />, [positionsVec3]);
+        />, [editingPositions, positionsVec3]);
 
     const lineInteractiveView = useMemo(() =>
         !dragging &&
@@ -140,7 +164,13 @@ export const CurveEditor: React.FC = () => {
             <Canvas style={{
                 cursor,
             }}
-                onPointerUp={() => setDragging(undefined)}>
+                onPointerUp={() => {
+                    setDragging(undefined);
+
+                    if (editingPositions) {
+                        setPositions(editingPositions);
+                    }
+                }}>
                 <color attach="background" args={["#16161D"]} />
 
                 <ambientLight intensity={Math.PI / 2} />
