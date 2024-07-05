@@ -2,25 +2,26 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, } from 'react
 import { Canvas, } from '@react-three/fiber'
 import { OrthographicCamera, Line, } from '@react-three/drei'
 
+import { createBoundary, type TupleVec2, type TupleVec3 } from './utils';
 import { Container } from './container';
 
 const PADDING = 0.025;
 
 type IDraggingSession = {
     index: number;
-    // boundary: [x0: number, y0: number, x1: number, y1: number];
+    boundary: [x0: number, y0: number, x1: number, y1: number];
     position: [x: number, y: number];
 };
 
 type IProps = {
-    onUpdated?: (value: [number, number][]) => void;
+    onUpdated?: (value: TupleVec2[]) => void;
 };
 
 export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
     /**
      * Point that hovered on line.
      */
-    const [hoverPoint, setHoverPoint] = useState<[number, number, number]>();
+    const [hoverPoint, setHoverPoint] = useState<TupleVec3>();
 
     /**
      * Index that hovered on point (sphere).
@@ -39,7 +40,7 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
         return undefined;
     }, [hoverPoint, hoverIndex]);
 
-    const [positions, setPositions] = useState<[number, number][]>(() => [[0, 0], [1, 1,]]);
+    const [positions, setPositions] = useState<TupleVec2[]>(() => [[0, 0], [1, 1,]]);
 
     const onUpdatedRef = useRef(onUpdated);
     onUpdatedRef.current = onUpdated;
@@ -60,7 +61,7 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
             return dragging.position;
         });
     }, [dragging, positions]);
-    const positionsVec3 = useMemo<Array<[number, number, number]>>(() =>
+    const positionsVec3 = useMemo<Array<TupleVec3>>(() =>
         positions.map(p => [...p, 0]), [positions]);
 
     const onAddPoint = useCallback(() => {
@@ -86,7 +87,7 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
             }
 
 
-            const nextArray: [number, number][] = [
+            const nextArray: TupleVec2[] = [
                 ...prev.slice(0, targetIndex + 1),
                 [hoverPoint[0], hoverPoint[1]],
                 ...prev.slice(targetIndex + 1)
@@ -96,7 +97,7 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
         });
     }, [hoverPoint]);
 
-    const pointView = useMemo(() => positionsVec3
+    const pointView = useMemo(() => positions
         .filter((_, index) => {
             if (!dragging) {
                 return true;
@@ -106,12 +107,12 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
         .map((position, index) =>
             <mesh
                 key={index}
-                position={position}
+                position={[...position, 0]}
                 onPointerDown={() => {
                     setHoverPoint(undefined);
                     setDragging({
                         index,
-                        // boundary,
+                        boundary: createBoundary(index, positions),
                         position: [position[0], position[1]],
                     })
                 }}
@@ -129,7 +130,7 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
             >
                 <sphereGeometry args={[0.025, 12, 12]} />
                 <meshBasicMaterial color={0x2da12d} />
-            </mesh>), [dragging, positionsVec3]);
+            </mesh>), [dragging, positions]);
 
     const lineView = useMemo(() =>
         <Line
@@ -194,7 +195,7 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
 
                 <mesh
                     position={[0.5, 0.5, -10]}
-                    onPointerMove={({ point }) => {
+                    onPointerMove={({ point: { x, y } }) => {
                         if (!dragging) {
                             return;
                         }
@@ -202,9 +203,13 @@ export const CurveEditor: React.FC<IProps> = ({ onUpdated }) => {
                             if (!prev) {
                                 return undefined
                             }
+                            const { boundary } = prev;
                             return {
                                 ...prev,
-                                position: [point.x, point.y]
+                                position: [
+                                    Math.min(Math.max(boundary[0], x), boundary[2]),
+                                    Math.min(Math.max(boundary[1], y), boundary[3]),
+                                ]
                             }
                         })
                     }}>
