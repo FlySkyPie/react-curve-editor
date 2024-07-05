@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 import { CurveEditor } from './curve-editor'
 import styles from './App.module.scss'
 
