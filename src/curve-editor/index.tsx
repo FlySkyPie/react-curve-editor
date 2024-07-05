@@ -1,9 +1,15 @@
 import React, { useCallback, useMemo, useState, } from 'react'
 import { Canvas, } from '@react-three/fiber'
-import { OrthographicCamera, Line } from '@react-three/drei'
+import { OrthographicCamera, Line, CameraControls } from '@react-three/drei'
 import useResizeObserver from "use-resize-observer";
 
 const PADDING = 0.025;
+
+type IDraggingSession = {
+    index: number;
+    // boundary: [x0: number, y0: number, x1: number, y1: number];
+    position: [x: number, y: number];
+};
 
 export const CurveEditor: React.FC = () => {
     const { ref, width = 1, height = 1 } = useResizeObserver<HTMLDivElement>();
@@ -18,6 +24,8 @@ export const CurveEditor: React.FC = () => {
      * Index that hovered on point (sphere).
      */
     const [hoverIndex, setHoverIndex] = useState<number>();
+
+    const [dragging, setDragging] = useState<IDraggingSession>();
 
     const cursor = useMemo(() => {
         if (hoverPoint) {
@@ -66,21 +74,35 @@ export const CurveEditor: React.FC = () => {
         });
     }, [hoverPoint]);
 
-    const pointView = useMemo(() => positionsVec3.map((position, index) =>
-        <mesh
-            position={position}
-            onPointerMove={(event) => {
-                event.stopPropagation();
-                setHoverPoint(undefined);
+    const pointView = useMemo(() => positionsVec3
+        .filter((_, index) => {
+            if (!dragging) {
+                return true;
+            }
+            return index !== dragging.index;
+        })
+        .map((position, index) =>
+            <mesh
+                position={position}
+                onPointerDown={() => {
+                    setHoverPoint(undefined);
+                    setDragging({
+                        index,
+                        // boundary,
+                        position: [position[0], position[1]],
+                    })
+                }}
+                onPointerMove={(event) => {
+                    event.stopPropagation();
+                    setHoverPoint(undefined);
 
-                setHoverIndex(index);
-
-            }}
-            onPointerLeave={() => setHoverIndex(undefined)}
-        >
-            <sphereGeometry args={[0.025, 12, 12]} />
-            <meshBasicMaterial color={0x2da12d} />
-        </mesh>), [positionsVec3]);
+                    setHoverIndex(index);
+                }}
+                onPointerLeave={() => setHoverIndex(undefined)}
+            >
+                <sphereGeometry args={[0.025, 12, 12]} />
+                <meshBasicMaterial color={0x2da12d} />
+            </mesh>), [dragging, positionsVec3]);
 
     const lineView = useMemo(() =>
         <Line
@@ -92,6 +114,7 @@ export const CurveEditor: React.FC = () => {
 
 
     const lineInteractiveView = useMemo(() =>
+        !dragging &&
         <Line
             points={positionsVec3}
             color="#ff00ff"
@@ -108,7 +131,7 @@ export const CurveEditor: React.FC = () => {
             }}
             onPointerLeave={() => setHoverPoint(undefined)}
             onClick={onAddPoint}
-        />, [onAddPoint, positionsVec3]);
+        />, [dragging, onAddPoint, positionsVec3]);
 
     return (
         <div
@@ -127,7 +150,8 @@ export const CurveEditor: React.FC = () => {
                 }}>
                 <Canvas style={{
                     cursor,
-                }}>
+                }}
+                    onPointerUp={() => setDragging(undefined)}>
                     <color attach="background" args={["#16161D"]} />
 
                     <ambientLight intensity={Math.PI / 2} />
@@ -143,6 +167,16 @@ export const CurveEditor: React.FC = () => {
                             <meshBasicMaterial color={0x2da12d} />
                         </mesh>}
 
+                    <mesh
+                        position={[0.5, 0.5, -10]}>
+                        <planeGeometry args={[1, 1]} />
+                        <meshBasicMaterial
+                            color={"#ff00ff"}
+                            opacity={0.5}
+                            transparent
+                        />
+                    </mesh>
+
                     <OrthographicCamera
                         makeDefault
                         top={1 + PADDING}
@@ -154,6 +188,8 @@ export const CurveEditor: React.FC = () => {
                         far={2000}
                         position={[0, 0, 200]}
                     />
+
+                    {/* <CameraControls makeDefault /> */}
                 </Canvas>
             </div>
         </div>
